@@ -1,18 +1,18 @@
 # Creating Your Streams
 
-Node has this wonderful abstraction named "Streams". Streams come in two flavours: Readable Streams and Writable Streams. Node has some implementations of these stream interfaces that you have probably already used. Besides using them, it is sometimes useful to create your own streaming objects.
+Node has this wonderful abstraction named "Streams". Streams come in two flavours: Readable Streams and Writable Streams. Node has some implementations of these stream interfaces that you have probably already used, like a TCP Connection, an HTTP Client Request or even a File read stream. Besides using them, it is sometimes useful to create your own streaming objects.
 
-Buf first, some concepts and conventions on streaming in Node:
+Any object can be a Readable or a Writable Stream if it implements the right set of methods and events. Before we learn about them, let's catchup on some underlying conventions in Node regarding the interface these objects should have:
 
 ## Readable Streams
 
-A Readable Stream is a stream that will emit a flow of data and will eventually end. You can also pause and resume this stream. 
 An example of a Readable Stream is a video file stream. It will emit that file data stream and it will eventually end. You can pause it and resume it.
-
 
 ## Writable Streams
 
-A Writable Stream is a stream that you can write to. An example of such a stream is a log file you can append to. On top of letting you write data to it, a Writable Stream should also inform you if the write you did was able to flush the buffers into the destination stream, or if the destination stream was full. This simple mechanism and the fact that you can pause and resume Readable Streams allows you to do some basic flow control.
+A Writable Stream is a stream that you can write to. An example of such a stream is a log file you can append to.
+
+On top of letting you write data to it, a Writable Stream should also inform you if the write you did was able to flush the buffers into the destination stream, or if the destination stream was full. This simple mechanism and the fact that you can pause and resume Readable Streams allows Node to do some basic flow control.
 
 ## Duplex Streams
 
@@ -37,21 +37,21 @@ Any object can be a Writable Stream: it just has to implements a handful of meth
 
 ### .writable
 
-First of all, a Writable Stream object must have a property named "writable" set to the boolean value "true". This makes this object viable for piping data in using the `Stream.prototype.pipe` method.
+First of all, a Writable Stream object must have a property named "writable" set to the boolean value "true". This makes this object viable for piping data to when using the `Stream.prototype.pipe` method.
 
 ### .write(buffer, [encoding])
 
 Your Writable Stream should obviously implement the `write` method. The first argument may be a string or a buffer. If it's a string, the second argument may contain the encoding. If it doesn't you should assume the default "utf8" encoding.
 
-If you managed to flush this new buffer out to the next stage (being the kernel or another Node stream), you should return "true". If not, return "false" to enable the propper flow control mechanisms when piping.
+If you managed to flush this new buffer out of the Node process, you should return `true`. If not, return `false` to enable the propper flow control mechanisms when piping.
 
-If you returned false, you should emit the "drain" once the buffer is flushed out. If you don't, `Stream.prototype.pipe` will assume you are still buffering and will wait indefinitely.
+If you returned `false`, you should emit the "drain" once the buffer is flushed out. If you don't, `Stream.prototype.pipe` will assume you are still buffering and will wait indefinitely.
 
 ### .end([buffer, [encoding]])
 
 Your stream should be able to end. While ending, a final buffer or string may be passed in to be written, in which case the two arguments should have the same semantics as in the `write` method.
 
-This method should be interpreted as a command to end in the near future and may not happen immediately. For instance, some data may still be buffered and may have to be flushed out before actually ending it.
+This method should be interpreted as a command to end in the near future and may not happen immediately. For instance, some data may still be buffered and may have to be flushed out before actually closing the underlying resources (if any).
 
 Typically this command is implemented as just a change in object state since the actual cleaning-up can be done in the `.destroy()` method.
 
@@ -72,8 +72,7 @@ Should anything go wrong while writing, transforming or flushing the buffers, yo
 this.emit('error', new Error('Something went terribly wrong'));
 ```
 
-This will enable the stream programatic clients to catch and handle errors gracefully. If noone is listening, Node will throw an uncaught exception.
-
+This will enable the stream programatic clients to catch and handle errors gracefully. If there is noone listening to the "error" events, Node will throw an uncaught exception.
 
 ## Implementing a Readable Stream
 
