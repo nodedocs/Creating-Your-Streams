@@ -74,6 +74,7 @@ this.emit('error', new Error('Something went terribly wrong'));
 
 This will enable the stream programatic clients to catch and handle errors gracefully. If there is noone listening to the "error" events, Node will throw an uncaught exception.
 
+
 ## Implementing a Readable Stream
 
 A Readable Stream is mainly an object that emits "data" events.
@@ -165,10 +166,8 @@ On the other hand, if you originally have your data in a Buffer format, you can 
 ```javascript
 var buf = // some buffer I got
 if (this.encoding) { buf = buf.toString(this.encoding); }
-```
 this.emit('data', buf);
-
-If you have this
+```
 
 ### .pause()
 
@@ -212,7 +211,7 @@ RandomStream.prototype.encode = function(buffer) {
     buffer = buffer.toString(this.encoding);
   }
   return buffer;
-}
+};
 
 RandomStream.prototype.emitRandom = function() {
   var buffer = new Buffer(this.options.size);
@@ -220,7 +219,7 @@ RandomStream.prototype.emitRandom = function() {
     buffer[i] = Math.floor(Math.random() * 256);
   }
   this.emit('data', this.encode(buffer));
-}
+};
 
 
 RandomStream.prototype.pause = function() {
@@ -228,16 +227,29 @@ RandomStream.prototype.pause = function() {
     clearInterval(this._interval);
     delete this._interval;
   }
-}
+};
 
 RandomStream.prototype.resume = function() {
   var self = this;
 
+  if (this.ended) { throw new Error('Stream has ended'); }
+
   if (! this._interval) {
-    setInterval(function() {
-      self.emitRandom();
-    }, this.interval);
+    this._interval =
+      setInterval(function() {
+        self.emitRandom();
+      }, this.options.interval);
   }
+};
+
+RandomStream.prototype.end = function(buf) {
+  this.ended = true;
+  if (buf) { this.write(buf); }
+  this.pause();
+};
+
+RandomStream.prototype.destroy = function() {
+  // do nothing
 }
 
 module.exports = RandomStream;
